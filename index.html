@@ -365,7 +365,7 @@
 const CONFIG = {
   // After deploying the Apps Script Web App, paste its URL here.
   // Leave empty ("") to run in offline DEMO mode (data saved only in this browser).
-  APPS_SCRIPT_URL: "  https://script.google.com/macros/s/AKfycbwH-ecTLDjX9SY8se_HOaOvZUH7WSZvwkB6pDadIF8gwHYhJbGjuZHWYeZ4kXUelWTLDQ/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyKv3m-feVZhIGbGu8C_gwOPCvKhlQV9sgbEzWLzvPM_9pehx5WPoQbEg0zplg-35naxg/exec",
 
   // Shared family PIN to open the site.
   PIN: "1913",
@@ -707,6 +707,7 @@ async function saveEdit(e){
   if(i>-1) DATA[i]=updated;
   if(!CONFIG.APPS_SCRIPT_URL) localStorage.setItem(DEMO_KEY, JSON.stringify(DATA));
   closeEdit(); renderAll();
+  if(CONFIG.APPS_SCRIPT_URL) loadData();   // reconcile with the Sheet so the screen shows the true saved state
 }
 
 async function deleteEntry(){
@@ -723,6 +724,7 @@ async function deleteEntry(){
   DATA = DATA.filter(d=>String(d.id)!==String(id));
   if(!CONFIG.APPS_SCRIPT_URL) localStorage.setItem(DEMO_KEY, JSON.stringify(DATA));
   closeEdit(); renderAll();
+  if(CONFIG.APPS_SCRIPT_URL) loadData();   // reconcile with the Sheet so deletes that didn't persist reappear immediately
 }
 function fmtDate(d){if(!d)return"—";const dt=new Date(d);return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});}
 
