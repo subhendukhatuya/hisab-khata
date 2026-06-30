@@ -32,8 +32,15 @@ function getSheet_() {
 }
 
 /* ---- READ: GET ?action=list ---- */
+var VERSION = "2.0-edit-delete";   // bump when code changes; check via ?action=ping
+
 function doGet(e) {
   try {
+    // Diagnostic: open  <your-exec-url>?action=ping  in a browser.
+    // If you see version "2.0-edit-delete", the edit/delete code IS live.
+    if (e && e.parameter && e.parameter.action === "ping") {
+      return json_({ ok: true, version: VERSION });
+    }
     var sh = getSheet_();
     var values = sh.getDataRange().getValues();
     var out = [];

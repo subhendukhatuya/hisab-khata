@@ -365,7 +365,7 @@
 const CONFIG = {
   // After deploying the Apps Script Web App, paste its URL here.
   // Leave empty ("") to run in offline DEMO mode (data saved only in this browser).
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyKv3m-feVZhIGbGu8C_gwOPCvKhlQV9sgbEzWLzvPM_9pehx5WPoQbEg0zplg-35naxg/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxY_Rn1VtI8sPVU2P7Lqn5DU6fK3t87pBg77X1iZepKDVmDw7FWNAm5KGMknU0TdSUUhw/exec",
 
   // Shared family PIN to open the site.
   PIN: "1913",
@@ -698,8 +698,10 @@ async function saveEdit(e){
   const msg=document.getElementById("editMsg"); msg.className="msg"; msg.textContent="Saving…";
   if(CONFIG.APPS_SCRIPT_URL){
     try{ showLoading(true);
-      await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
         body:JSON.stringify({action:"update", entry:updated})});
+      let j=null; try{ j=await res.json(); }catch(_){}
+      if(j && j.ok===false){ msg.className="msg err"; msg.textContent="Sheet rejected: "+(j.error||"unknown"); showLoading(false); return; }
     }catch(err){ msg.className="msg err"; msg.textContent="Failed: "+err; showLoading(false); return; }
     finally{ showLoading(false); }
   }
@@ -716,8 +718,10 @@ async function deleteEntry(){
   const msg=document.getElementById("editMsg"); msg.className="msg"; msg.textContent="Deleting…";
   if(CONFIG.APPS_SCRIPT_URL){
     try{ showLoading(true);
-      await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
         body:JSON.stringify({action:"delete", id})});
+      let j=null; try{ j=await res.json(); }catch(_){}
+      if(j && j.ok===false){ msg.className="msg err"; msg.textContent="Sheet rejected: "+(j.error||"unknown"); showLoading(false); return; }
     }catch(err){ msg.className="msg err"; msg.textContent="Failed: "+err; showLoading(false); return; }
     finally{ showLoading(false); }
   }
