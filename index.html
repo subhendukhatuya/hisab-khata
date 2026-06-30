@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Hisab-Khata · Family Fund</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0f1226" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Hisab-Khata" />
+<link rel="apple-touch-icon" href="icons/apple-touch-180.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -823,6 +832,13 @@ function drawBar(id,labels,sets){
   charts[id]=new Chart(el,{type:"bar",
     data:{labels:labels.length?labels:["—"],datasets:sets.map(s=>({label:s.label,data:s.data.length?s.data:[0],backgroundColor:s.color,borderRadius:6,maxBarThickness:34}))},
     options:{...baseOpts,scales:{x:{ticks:{color:"#9aa0c7"},grid:{display:false}},y:{ticks:{color:"#9aa0c7"},grid:{color:"rgba(255,255,255,.06)"}}}}});
+}
+
+/* ---------- PWA: register service worker so the site installs as an app ---------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("service-worker.js").catch(err=>console.log("SW registration failed:",err));
+  });
 }
 </script>
 </body>
