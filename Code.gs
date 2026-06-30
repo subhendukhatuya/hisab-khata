@@ -56,28 +56,59 @@ function doGet(e) {
   }
 }
 
-/* ---- WRITE: POST {action:"add", entry:{...}} ---- */
+/* ---- WRITE: POST add / update / delete ---- */
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
+    var sh = getSheet_();
+
+    // ADD: {action:"add", entry:{...}}
     if (body.action === "add" && body.entry) {
-      var en = body.entry;
-      var sh = getSheet_();
-      sh.appendRow([
-        en.id || String(Date.now()),
-        en.date || "",
-        en.member || "",
-        en.flow || "",
-        en.category || "",
-        Number(en.amount) || 0,
-        en.note || ""
-      ]);
+      sh.appendRow(rowFromEntry_(body.entry));
       return json_({ ok: true });
     }
+
+    // UPDATE: {action:"update", entry:{id,...}}
+    if (body.action === "update" && body.entry && body.entry.id) {
+      var r = findRowById_(sh, body.entry.id);
+      if (r === -1) return json_({ ok: false, error: "id not found" });
+      sh.getRange(r, 1, 1, HEADERS.length).setValues([rowFromEntry_(body.entry)]);
+      return json_({ ok: true });
+    }
+
+    // DELETE: {action:"delete", id:"..."}
+    if (body.action === "delete" && body.id) {
+      var rd = findRowById_(sh, body.id);
+      if (rd === -1) return json_({ ok: false, error: "id not found" });
+      sh.deleteRow(rd);
+      return json_({ ok: true });
+    }
+
     return json_({ ok: false, error: "Unknown action" });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   }
+}
+
+function rowFromEntry_(en) {
+  return [
+    en.id || String(Date.now()),
+    en.date || "",
+    en.member || "",
+    en.flow || "",
+    en.category || "",
+    Number(en.amount) || 0,
+    en.note || ""
+  ];
+}
+
+/* Returns the 1-based sheet row for a given id, or -1 if not found. */
+function findRowById_(sh, id) {
+  var ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
+  for (var i = 1; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(id)) return i + 1;
+  }
+  return -1;
 }
 
 function formatDate_(d) {

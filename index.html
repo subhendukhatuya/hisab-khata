@@ -102,6 +102,30 @@
   .stat .val{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
   .stat.green .val{color:var(--green)} .stat.red .val{color:var(--red)}
   .stat.gold .val{color:var(--gold)} .stat.blue .val{color:var(--blue)}
+  .stat.violet .val{color:var(--violet)}
+
+  /* ---------- INSIGHT ROWS ---------- */
+  .ins{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--stroke)}
+  .ins:last-child{border-bottom:none}
+  .ins .l{display:flex;align-items:center;gap:11px;color:var(--muted);font-size:14px;font-weight:500}
+  .ins .l .ei{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.06);font-size:16px}
+  .ins .r{font-weight:800;font-size:15px;text-align:right}
+  .ins .r small{display:block;font-weight:500;color:var(--muted);font-size:11.5px;margin-top:1px}
+
+  /* ---------- ROW ACTION + MODAL ---------- */
+  .icon-btn{border:1px solid var(--stroke);background:#0e1130;color:var(--text);cursor:pointer;
+    border-radius:9px;padding:6px 11px;font-size:13px;font-family:inherit;font-weight:600}
+  .icon-btn:hover{border-color:var(--violet);background:rgba(124,92,255,.12)}
+  .modal{display:none;position:fixed;inset:0;z-index:60;background:rgba(8,9,20,.72);
+    backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:18px}
+  .modal.open{display:flex}
+  .modal-card{width:min(520px,96vw);max-height:92vh;overflow:auto;background:var(--card-solid);
+    border:1px solid var(--stroke);border-radius:22px;padding:26px;box-shadow:var(--shadow);animation:fade .25s ease}
+  .modal-card h3{font-size:18px;margin-bottom:18px}
+  .modal-actions{display:flex;gap:10px;margin-top:8px}
+  .btn.ghost{background:transparent;border:1px solid var(--stroke);width:auto;margin-top:0}
+  .btn.danger{background:linear-gradient(135deg,#fb7185,#ef4444);width:auto;margin-top:0}
+  .modal-actions .btn{flex:1;margin-top:0}
 
   .panel{background:var(--card);border:1px solid var(--stroke);border-radius:20px;padding:22px}
   .panel h3{font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
@@ -195,6 +219,7 @@
       <div class="stat red"><div class="ic">🧾</div><div class="lbl">Total Expenses</div><div class="val" id="s-expense">₹0</div></div>
       <div class="stat gold"><div class="ic">📈</div><div class="lbl">Total Invested / Saved</div><div class="val" id="s-invest">₹0</div></div>
       <div class="stat green"><div class="ic">🏛️</div><div class="lbl">Fund Balance (cash)</div><div class="val" id="s-balance">₹0</div></div>
+      <div class="stat violet"><div class="ic">💎</div><div class="lbl">Family Net Worth</div><div class="val" id="s-networth">₹0</div></div>
     </div>
 
     <div class="grid two" style="margin-bottom:16px">
@@ -205,7 +230,7 @@
     <div class="grid two">
       <div class="panel"><h3>🧾 Expenses by Category</h3><canvas id="chartExpense"></canvas></div>
       <div class="panel">
-        <h3>👛 Member Net Position</h3>
+        <h3>✨ Family Insights</h3>
         <div id="memberList"></div>
       </div>
     </div>
@@ -290,12 +315,45 @@
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Date</th><th>Member</th><th>Type</th><th>Category</th><th>Note</th><th style="text-align:right">Amount</th></tr></thead>
+          <thead><tr><th>Date</th><th>Member</th><th>Type</th><th>Category</th><th>Note</th><th style="text-align:right">Amount</th><th style="text-align:center">Edit</th></tr></thead>
           <tbody id="recordsBody"></tbody>
         </table>
       </div>
     </div>
   </section>
+
+  <!-- ===== EDIT MODAL ===== -->
+  <div id="editModal" class="modal">
+    <div class="modal-card">
+      <h3>✏️ Edit entry</h3>
+      <form id="editForm">
+        <input type="hidden" id="e-id">
+        <div class="field">
+          <label>Type</label>
+          <div class="seg">
+            <label><input type="radio" name="eflow" value="Credit"><span class="credit">＋ Credit</span></label>
+            <label><input type="radio" name="eflow" value="Expense"><span class="expense">－ Expense</span></label>
+            <label><input type="radio" name="eflow" value="Investment"><span class="invest">★ Saving</span></label>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Member</label><select id="e-member"></select></div>
+          <div class="field"><label>Amount (₹)</label><input id="e-amount" type="number" min="1" step="0.01"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Category / Purpose</label><select id="e-category"></select></div>
+          <div class="field"><label>Date</label><input id="e-date" type="date"></div>
+        </div>
+        <div class="field"><label>Note</label><textarea id="e-note" rows="2"></textarea></div>
+        <div id="editMsg" class="msg"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" onclick="closeEdit()">Cancel</button>
+          <button type="button" class="btn danger" id="e-delete">🗑 Delete</button>
+          <button type="submit" class="btn">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <div class="footnote">Hisab-Khata · built for the family · data stored in your Google Sheet</div>
 </div>
@@ -307,7 +365,7 @@
 const CONFIG = {
   // After deploying the Apps Script Web App, paste its URL here.
   // Leave empty ("") to run in offline DEMO mode (data saved only in this browser).
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbz_uuGB0lO6Gdzelyer3xMyH62C27nNIvu9VHA_2BoaYKeDA9MYF7TyAfo7UcDRjn-01g/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwF6WguV76xPcx6TmzId3uqgCAedi2bhqL_rcETMHJlFsPocq6xAoz0AwQKbEQ7wwOhGA/exec",
 
   // Shared family PIN to open the site.
   PIN: "1913",
@@ -371,6 +429,16 @@ function initApp(){
   ["filterMember","filterFlow","filterText"].forEach(id=>{
     document.getElementById(id).addEventListener("input", renderRecords);
   });
+
+  // edit modal wiring
+  document.getElementById("editForm").addEventListener("submit", saveEdit);
+  document.getElementById("e-delete").addEventListener("click", deleteEntry);
+  document.querySelectorAll('input[name="eflow"]').forEach(r=>r.onchange=()=>{
+    const sel=document.getElementById("e-category");
+    const cur=sel.value;
+    fillSelect(sel, CATEGORIES[document.querySelector('input[name="eflow"]:checked').value], cur);
+  });
+  document.getElementById("editModal").addEventListener("click",e=>{ if(e.target.id==="editModal") closeEdit(); });
 
   // connection status
   const online = !!CONFIG.APPS_SCRIPT_URL;
@@ -468,16 +536,10 @@ function renderDash(){
   document.getElementById("s-expense").textContent = fmt(t.expense);
   document.getElementById("s-invest").textContent  = fmt(t.invest);
   document.getElementById("s-balance").textContent = fmt(t.balance);
+  const netWorth = t.credit - t.expense;            // cash + assets the family holds
+  document.getElementById("s-networth").textContent = fmt(netWorth);
 
-  // member net position list
-  const ml = document.getElementById("memberList");
-  ml.innerHTML = CONFIG.MEMBERS.map((m,i)=>{
-    const c = DATA.filter(d=>d.member===m && d.flow==="Credit").reduce((a,b)=>a+b.amount,0);
-    const init = m[0];
-    return `<div class="member-chip"><div class="who">
-        <div class="av" style="background:${MEMBER_COLORS[i%MEMBER_COLORS.length]}">${init}</div>${m}
-      </div><div style="font-weight:800;color:var(--blue)">${fmt(c)}</div></div>`;
-  }).join("");
+  renderInsights(t);
 
   // monthly flow
   const months={};
@@ -504,6 +566,51 @@ function renderDash(){
 }
 function palette(i){const p=["#7c5cff","#23a6d5","#fbbf24","#fb7185","#34d399","#a78bfa","#f97316","#22d3ee","#4ade80","#94a3b8","#e879f9","#fb923c"];return p[i%p.length];}
 function prettyMonth(k){const[y,m]=k.split("-");return new Date(y,m-1).toLocaleString("en",{month:"short"})+" "+y.slice(2);}
+
+/* ---------- FAMILY INSIGHTS (whole-family stats, no individual comparison) ---------- */
+function renderInsights(t){
+  const ml = document.getElementById("memberList");
+  if(!DATA.length){ ml.innerHTML='<div class="empty">No data yet — add a few entries to see family insights.</div>'; return; }
+
+  // months span
+  const monthSet = new Set(DATA.map(d=>(d.date||"").slice(0,7)).filter(Boolean));
+  const nMonths = Math.max(monthSet.size, 1);
+
+  // this month
+  const thisKey = new Date().toISOString().slice(0,7);
+  let mCredit=0, mExpense=0;
+  DATA.forEach(d=>{ if((d.date||"").slice(0,7)===thisKey){
+    if(d.flow==="Credit") mCredit+=d.amount; else if(d.flow==="Expense") mExpense+=d.amount; } });
+
+  // top expense category
+  const ex={};
+  DATA.filter(d=>d.flow==="Expense").forEach(d=>ex[d.category]=(ex[d.category]||0)+d.amount);
+  const topCat = Object.keys(ex).sort((a,b)=>ex[b]-ex[a])[0];
+
+  // biggest single transaction
+  const big = [...DATA].sort((a,b)=>b.amount-a.amount)[0];
+
+  const savingsRate = t.credit ? Math.round(t.invest / t.credit * 100) : 0;
+  const expenseRate = t.credit ? Math.round(t.expense / t.credit * 100) : 0;
+  const avgMonthExp = Math.round(t.expense / nMonths);
+  const avgMonthCredit = Math.round(t.credit / nMonths);
+
+  const rows = [
+    ["🌱","Savings rate", `${savingsRate}%`, "of contributions saved"],
+    ["🧮","Expense rate", `${expenseRate}%`, "of contributions spent"],
+    ["📆","This month", `${fmt(mCredit)} in`, `${fmt(mExpense)} spent`],
+    ["📥","Avg monthly contribution", fmt(avgMonthCredit), `over ${nMonths} month${nMonths>1?"s":""}`],
+    ["📤","Avg monthly expense", fmt(avgMonthExp), `over ${nMonths} month${nMonths>1?"s":""}`],
+    ["🏷️","Top expense category", topCat?topCat:"—", topCat?fmt(ex[topCat]):""],
+    ["🔝","Biggest single entry", big?fmt(big.amount):"—", big?`${big.category}`:""],
+    ["🧾","Total entries logged", String(DATA.length), `${monthSet.size} month${monthSet.size>1?"s":""} tracked`]
+  ];
+  ml.innerHTML = rows.map(r=>`
+    <div class="ins">
+      <div class="l"><span class="ei">${r[0]}</span>${r[1]}</div>
+      <div class="r">${r[2]}<small>${r[3]||""}</small></div>
+    </div>`).join("");
+}
 
 function renderAssets(){
   const assets={};
@@ -541,7 +648,7 @@ function renderRecords(){
   if(ft)rows=rows.filter(r=>(r.category+" "+r.note).toLowerCase().includes(ft));
 
   const body=document.getElementById("recordsBody");
-  if(!rows.length){body.innerHTML=`<tr><td colspan="6"><div class="empty">No records yet.</div></td></tr>`;return;}
+  if(!rows.length){body.innerHTML=`<tr><td colspan="7"><div class="empty">No records yet.</div></td></tr>`;return;}
   body.innerHTML=rows.map(r=>{
     const tagClass=r.flow==="Credit"?"credit":r.flow==="Expense"?"expense":"invest";
     const tagText=r.flow==="Investment"?"Saving":r.flow;
@@ -554,8 +661,68 @@ function renderRecords(){
       <td>${r.category}</td>
       <td style="color:var(--muted)">${r.note||"—"}</td>
       <td style="text-align:right" class="${amtClass}">${sign}${fmt(r.amount)}</td>
+      <td style="text-align:center"><button class="icon-btn" onclick="openEdit('${r.id}')">✏️</button></td>
     </tr>`;
   }).join("");
+}
+function fillSelect(sel,arr,val){sel.innerHTML=arr.map(x=>`<option ${x===val?"selected":""}>${x}</option>`).join("");}
+
+/* ---------- EDIT / DELETE ---------- */
+function openEdit(id){
+  const r = DATA.find(d=>String(d.id)===String(id));
+  if(!r) return;
+  document.getElementById("e-id").value = r.id;
+  document.querySelectorAll('input[name="eflow"]').forEach(x=>x.checked=(x.value===r.flow));
+  fillSelect(document.getElementById("e-member"), CONFIG.MEMBERS, r.member);
+  fillSelect(document.getElementById("e-category"), CATEGORIES[r.flow], r.category);
+  document.getElementById("e-amount").value = r.amount;
+  document.getElementById("e-date").value = r.date;
+  document.getElementById("e-note").value = r.note||"";
+  document.getElementById("editMsg").textContent="";
+  document.getElementById("editModal").classList.add("open");
+}
+function closeEdit(){ document.getElementById("editModal").classList.remove("open"); }
+
+async function saveEdit(e){
+  e.preventDefault();
+  const id = document.getElementById("e-id").value;
+  const flow = document.querySelector('input[name="eflow"]:checked').value;
+  const updated = {
+    id, flow,
+    member: document.getElementById("e-member").value,
+    category: document.getElementById("e-category").value,
+    amount: Number(document.getElementById("e-amount").value),
+    date: document.getElementById("e-date").value,
+    note: document.getElementById("e-note").value.trim()
+  };
+  const msg=document.getElementById("editMsg"); msg.className="msg"; msg.textContent="Saving…";
+  if(CONFIG.APPS_SCRIPT_URL){
+    try{ showLoading(true);
+      await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify({action:"update", entry:updated})});
+    }catch(err){ msg.className="msg err"; msg.textContent="Failed: "+err; showLoading(false); return; }
+    finally{ showLoading(false); }
+  }
+  const i = DATA.findIndex(d=>String(d.id)===String(id));
+  if(i>-1) DATA[i]=updated;
+  if(!CONFIG.APPS_SCRIPT_URL) localStorage.setItem(DEMO_KEY, JSON.stringify(DATA));
+  closeEdit(); renderAll();
+}
+
+async function deleteEntry(){
+  const id = document.getElementById("e-id").value;
+  if(!confirm("Delete this entry permanently?")) return;
+  const msg=document.getElementById("editMsg"); msg.className="msg"; msg.textContent="Deleting…";
+  if(CONFIG.APPS_SCRIPT_URL){
+    try{ showLoading(true);
+      await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify({action:"delete", id})});
+    }catch(err){ msg.className="msg err"; msg.textContent="Failed: "+err; showLoading(false); return; }
+    finally{ showLoading(false); }
+  }
+  DATA = DATA.filter(d=>String(d.id)!==String(id));
+  if(!CONFIG.APPS_SCRIPT_URL) localStorage.setItem(DEMO_KEY, JSON.stringify(DATA));
+  closeEdit(); renderAll();
 }
 function fmtDate(d){if(!d)return"—";const dt=new Date(d);return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});}
 
