@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hisab-Khata · Family Fund</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1226;
+    --bg-soft:#171a35;
+    --card:rgba(255,255,255,0.06);
+    --card-solid:#1c2042;
+    --stroke:rgba(255,255,255,0.10);
+    --text:#eef0ff;
+    --muted:#9aa0c7;
+    --green:#34d399;
+    --red:#fb7185;
+    --gold:#fbbf24;
+    --blue:#60a5fa;
+    --violet:#a78bfa;
+    --accent:linear-gradient(135deg,#7c5cff 0%,#23a6d5 100%);
+    --shadow:0 20px 50px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 80% -10%,rgba(124,92,255,.25),transparent 60%),
+      radial-gradient(900px 500px at -10% 10%,rgba(35,166,213,.20),transparent 55%),
+      var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 80px}
+
+  /* ---------- PIN GATE ---------- */
+  #gate{
+    position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(900px 500px at 50% 0%,rgba(124,92,255,.30),transparent 60%),var(--bg);
+  }
+  .gate-card{
+    width:min(380px,92vw);background:var(--card-solid);border:1px solid var(--stroke);
+    border-radius:24px;padding:34px 28px;text-align:center;box-shadow:var(--shadow);
+  }
+  .logo{font-size:34px;font-weight:800;letter-spacing:-.5px}
+  .logo span{background:var(--accent);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .gate-card p{color:var(--muted);margin:8px 0 22px;font-size:14px}
+  .pin-input{
+    width:100%;text-align:center;letter-spacing:10px;font-size:24px;font-weight:700;
+    padding:14px;border-radius:14px;border:1px solid var(--stroke);background:#0e1130;color:var(--text);
+  }
+  .pin-input:focus{outline:none;border-color:var(--violet)}
+  .btn{
+    border:none;cursor:pointer;font-family:inherit;font-weight:700;color:#fff;
+    background:var(--accent);padding:13px 18px;border-radius:14px;font-size:15px;width:100%;margin-top:14px;
+    transition:transform .12s ease,filter .12s ease;
+  }
+  .btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+  .gate-err{color:var(--red);font-size:13px;height:16px;margin-top:10px}
+
+  /* ---------- HEADER ---------- */
+  header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .mark{
+    width:46px;height:46px;border-radius:14px;background:var(--accent);
+    display:grid;place-items:center;font-size:22px;box-shadow:var(--shadow)
+  }
+  .brand h1{font-size:22px;font-weight:800;letter-spacing:-.4px}
+  .brand small{color:var(--muted);font-weight:500}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--stroke);
+    padding:8px 14px;border-radius:999px;font-size:13px;color:var(--muted)
+  }
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+  .dot.ok{background:var(--green)}
+
+  /* ---------- TABS ---------- */
+  nav.tabs{display:flex;gap:8px;background:var(--card);border:1px solid var(--stroke);
+    padding:6px;border-radius:16px;margin-bottom:22px;overflow-x:auto}
+  nav.tabs button{
+    flex:1;min-width:120px;border:none;background:transparent;color:var(--muted);
+    font-family:inherit;font-weight:600;font-size:14px;padding:11px 12px;border-radius:12px;cursor:pointer;white-space:nowrap
+  }
+  nav.tabs button.active{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
+
+  .view{display:none;animation:fade .35s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* ---------- CARDS / STATS ---------- */
+  .grid{display:grid;gap:16px}
+  .stats{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+  .stat{
+    background:var(--card);border:1px solid var(--stroke);border-radius:20px;padding:20px;position:relative;overflow:hidden
+  }
+  .stat .ic{font-size:20px;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.06)}
+  .stat .lbl{color:var(--muted);font-size:13px;margin-top:14px}
+  .stat .val{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+  .stat.green .val{color:var(--green)} .stat.red .val{color:var(--red)}
+  .stat.gold .val{color:var(--gold)} .stat.blue .val{color:var(--blue)}
+
+  .panel{background:var(--card);border:1px solid var(--stroke);border-radius:20px;padding:22px}
+  .panel h3{font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .two{grid-template-columns:1.3fr 1fr}
+  .three{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:860px){.two,.three{grid-template-columns:1fr}}
+
+  /* ---------- FORM ---------- */
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:7px;font-weight:600}
+  .field input,.field select,.field textarea{
+    width:100%;padding:13px 14px;border-radius:13px;border:1px solid var(--stroke);
+    background:#0e1130;color:var(--text);font-family:inherit;font-size:15px
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--violet)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){.row2{grid-template-columns:1fr}}
+  .seg{display:flex;gap:8px}
+  .seg label{flex:1;cursor:pointer}
+  .seg input{display:none}
+  .seg span{display:block;text-align:center;padding:12px;border-radius:13px;border:1px solid var(--stroke);
+    background:#0e1130;font-weight:700;font-size:14px;transition:.15s}
+  .seg input:checked + span.credit{background:rgba(52,211,153,.18);border-color:var(--green);color:var(--green)}
+  .seg input:checked + span.expense{background:rgba(251,113,133,.18);border-color:var(--red);color:var(--red)}
+  .seg input:checked + span.invest{background:rgba(251,191,36,.18);border-color:var(--gold);color:var(--gold)}
+  .msg{font-size:14px;margin-top:6px;min-height:18px}
+  .msg.ok{color:var(--green)} .msg.err{color:var(--red)}
+
+  /* ---------- TABLE ---------- */
+  .tbl-wrap{overflow-x:auto;border-radius:16px;border:1px solid var(--stroke)}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:680px}
+  th,td{padding:13px 14px;text-align:left;border-bottom:1px solid var(--stroke)}
+  th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;background:rgba(255,255,255,.03)}
+  tbody tr:hover{background:rgba(255,255,255,.03)}
+  .tag{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .tag.credit{background:rgba(52,211,153,.15);color:var(--green)}
+  .tag.expense{background:rgba(251,113,133,.15);color:var(--red)}
+  .tag.invest{background:rgba(251,191,36,.15);color:var(--gold)}
+  .amt-c{color:var(--green);font-weight:700} .amt-d{color:var(--red);font-weight:700}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .toolbar select,.toolbar input{padding:10px 12px;border-radius:11px;border:1px solid var(--stroke);background:#0e1130;color:var(--text);font-family:inherit;font-size:14px}
+  .member-chip{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:14px;background:var(--card);border:1px solid var(--stroke);margin-bottom:10px}
+  .member-chip .who{display:flex;align-items:center;gap:11px;font-weight:700}
+  .av{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:800;color:#fff}
+  .empty{text-align:center;color:var(--muted);padding:40px 10px;font-size:14px}
+  canvas{max-height:280px}
+  .loading{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--card-solid);border:1px solid var(--stroke);
+    padding:10px 18px;border-radius:999px;font-size:13px;z-index:40;display:none;box-shadow:var(--shadow)}
+  .footnote{color:var(--muted);font-size:12px;text-align:center;margin-top:30px}
+</style>
+</head>
+<body>
+
+<!-- ====== PIN GATE ====== -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="logo">Hisab<span>·</span>Khata</div>
+    <p>Family Common Fund · enter your PIN</p>
+    <input id="pinInput" class="pin-input" type="password" inputmode="numeric" maxlength="8" placeholder="••••" />
+    <div id="gateErr" class="gate-err"></div>
+    <button class="btn" onclick="checkPin()">Unlock</button>
+  </div>
+</div>
+
+<div id="loading" class="loading">Syncing…</div>
+
+<!-- ====== APP ====== -->
+<div class="wrap" id="app" style="display:none">
+  <header class="top">
+    <div class="brand">
+      <div class="mark">💰</div>
+      <div>
+        <h1>Hisab-Khata</h1>
+        <small>Surjendu · Madhumita · Subhendu · Mamata</small>
+      </div>
+    </div>
+    <div class="pill"><span id="connDot" class="dot"></span><span id="connText">Local demo mode</span></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="active" data-view="dash">📊 Dashboard</button>
+    <button data-view="add">➕ Add Entry</button>
+    <button data-view="assets">🏦 Savings & Assets</button>
+    <button data-view="records">📒 All Records</button>
+  </nav>
+
+  <!-- ===== DASHBOARD ===== -->
+  <section class="view active" id="view-dash">
+    <div class="grid stats" style="margin-bottom:16px">
+      <div class="stat blue"><div class="ic">🪙</div><div class="lbl">Total Contributions</div><div class="val" id="s-credit">₹0</div></div>
+      <div class="stat red"><div class="ic">🧾</div><div class="lbl">Total Expenses</div><div class="val" id="s-expense">₹0</div></div>
+      <div class="stat gold"><div class="ic">📈</div><div class="lbl">Total Invested / Saved</div><div class="val" id="s-invest">₹0</div></div>
+      <div class="stat green"><div class="ic">🏛️</div><div class="lbl">Fund Balance (cash)</div><div class="val" id="s-balance">₹0</div></div>
+    </div>
+
+    <div class="grid two" style="margin-bottom:16px">
+      <div class="panel"><h3>📅 Monthly Cash Flow</h3><canvas id="chartFlow"></canvas></div>
+      <div class="panel"><h3>👨‍👩‍👧‍👦 Contributions by Member</h3><canvas id="chartMembers"></canvas></div>
+    </div>
+
+    <div class="grid two">
+      <div class="panel"><h3>🧾 Expenses by Category</h3><canvas id="chartExpense"></canvas></div>
+      <div class="panel">
+        <h3>👛 Member Net Position</h3>
+        <div id="memberList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ADD ENTRY ===== -->
+  <section class="view" id="view-add">
+    <div class="grid two">
+      <div class="panel">
+        <h3>➕ Record a transaction</h3>
+        <form id="entryForm">
+          <div class="field">
+            <label>Type</label>
+            <div class="seg">
+              <label><input type="radio" name="flow" value="Credit" checked><span class="credit">＋ Credit<br><small style="font-weight:500;opacity:.8">money in</small></span></label>
+              <label><input type="radio" name="flow" value="Expense"><span class="expense">－ Expense<br><small style="font-weight:500;opacity:.8">spent</small></span></label>
+              <label><input type="radio" name="flow" value="Investment"><span class="invest">★ Saving<br><small style="font-weight:500;opacity:.8">MF/FD/Gold</small></span></label>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Member</label>
+              <select name="member" id="f-member" required></select>
+            </div>
+            <div class="field">
+              <label>Amount (₹)</label>
+              <input name="amount" id="f-amount" type="number" min="1" step="0.01" placeholder="5000" required>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Category / Purpose</label>
+              <select name="category" id="f-category" required></select>
+            </div>
+            <div class="field">
+              <label>Date</label>
+              <input name="date" id="f-date" type="date" required>
+            </div>
+          </div>
+          <div class="field">
+            <label>Note (optional)</label>
+            <textarea name="note" rows="2" placeholder="e.g. June electricity bill"></textarea>
+          </div>
+          <button class="btn" type="submit">Save entry</button>
+          <div id="formMsg" class="msg"></div>
+        </form>
+      </div>
+      <div class="panel">
+        <h3>💡 Quick guide</h3>
+        <p style="color:var(--muted);font-size:14px;line-height:1.7">
+          <b style="color:var(--green)">Credit</b> — money any member adds into the common fund.<br><br>
+          <b style="color:var(--red)">Expense</b> — money spent: electricity, gas, maid salary, groceries, etc.<br><br>
+          <b style="color:var(--gold)">Saving</b> — money parked into an asset: Mutual Fund, RD, FD, Stocks, Gold, Land, Insurance.<br><br>
+          <span style="font-size:13px">Fund Balance = Contributions − Expenses − Savings. Your savings still show up under <b>Savings &amp; Assets</b> as your growing wealth.</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ASSETS ===== -->
+  <section class="view" id="view-assets">
+    <div class="grid stats" style="margin-bottom:16px" id="assetStats"></div>
+    <div class="grid two">
+      <div class="panel"><h3>🏦 Asset Allocation</h3><canvas id="chartAssets"></canvas></div>
+      <div class="panel"><h3>📊 Asset Breakdown</h3><div id="assetTable"></div></div>
+    </div>
+  </section>
+
+  <!-- ===== RECORDS ===== -->
+  <section class="view" id="view-records">
+    <div class="panel">
+      <h3>📒 All Records</h3>
+      <div class="toolbar">
+        <select id="filterMember"><option value="">All members</option></select>
+        <select id="filterFlow">
+          <option value="">All types</option>
+          <option value="Credit">Credit</option>
+          <option value="Expense">Expense</option>
+          <option value="Investment">Saving</option>
+        </select>
+        <input id="filterText" type="text" placeholder="Search category / note…">
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Member</th><th>Type</th><th>Category</th><th>Note</th><th style="text-align:right">Amount</th></tr></thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="footnote">Hisab-Khata · built for the family · data stored in your Google Sheet</div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIG  — edit these 3 things, then publish to GitHub
+   ========================================================= */
+const CONFIG = {
+  // After deploying the Apps Script Web App, paste its URL here.
+  // Leave empty ("") to run in offline DEMO mode (data saved only in this browser).
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbz_uuGB0lO6Gdzelyer3xMyH62C27nNIvu9VHA_2BoaYKeDA9MYF7TyAfo7UcDRjn-01g/exec",
+
+  // Shared family PIN to open the site.
+  PIN: "1913",
+
+  // The four earning members.
+  MEMBERS: ["Surjendu", "Madhumita", "Subhendu", "Mamata"]
+};
+
+const CATEGORIES = {
+  Credit:     ["Salary deposit","Bonus","Rental income","Interest received","Refund","Gift received","Other income"],
+  Expense:    ["Electricity","Gas","Water","Maid salary","Groceries","Cook / Food","Mobile & Internet","Medical","Education","Transport / Fuel","House maintenance","EMI / Loan","Festival / Gift","Eating out","Other expense"],
+  Investment: ["Mutual Fund (MF)","Recurring Deposit (RD)","Fixed Deposit (FD)","Stocks / Shares","Gold","Land / Property","Insurance (LIC/Term)","PPF / EPF","Emergency savings","Other investment"]
+};
+const ASSET_COLORS = {
+  "Mutual Fund (MF)":"#7c5cff","Recurring Deposit (RD)":"#23a6d5","Fixed Deposit (FD)":"#34d399",
+  "Stocks / Shares":"#fb7185","Gold":"#fbbf24","Land / Property":"#f97316",
+  "Insurance (LIC/Term)":"#a78bfa","PPF / EPF":"#22d3ee","Emergency savings":"#4ade80","Other investment":"#94a3b8"
+};
+const MEMBER_COLORS = ["#7c5cff","#23a6d5","#fbbf24","#fb7185","#34d399","#a78bfa"];
+const fmt = n => "₹" + Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:0});
+const DEMO_KEY = "hisabkhata_demo";
+
+let DATA = [];
+let charts = {};
+
+/* ---------- PIN GATE ---------- */
+function checkPin(){
+  const v = document.getElementById("pinInput").value.trim();
+  if(v === String(CONFIG.PIN)){
+    document.getElementById("gate").style.display="none";
+    document.getElementById("app").style.display="block";
+    initApp();
+  } else {
+    document.getElementById("gateErr").textContent = "Wrong PIN, try again.";
+  }
+}
+document.getElementById("pinInput").addEventListener("keydown",e=>{ if(e.key==="Enter") checkPin(); });
+
+/* ---------- INIT ---------- */
+function initApp(){
+  // members in selects
+  const ms = CONFIG.MEMBERS.map(m=>`<option>${m}</option>`).join("");
+  document.getElementById("f-member").innerHTML = ms;
+  document.getElementById("filterMember").innerHTML = '<option value="">All members</option>' + ms;
+  document.getElementById("f-date").value = new Date().toISOString().slice(0,10);
+  refreshCategories();
+
+  // tabs
+  document.querySelectorAll("nav.tabs button").forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.remove("active"));
+      document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+      b.classList.add("active");
+      document.getElementById("view-"+b.dataset.view).classList.add("active");
+    };
+  });
+
+  // flow change updates categories
+  document.querySelectorAll('input[name="flow"]').forEach(r=>r.onchange=refreshCategories);
+  document.getElementById("entryForm").addEventListener("submit", onSubmit);
+  ["filterMember","filterFlow","filterText"].forEach(id=>{
+    document.getElementById(id).addEventListener("input", renderRecords);
+  });
+
+  // connection status
+  const online = !!CONFIG.APPS_SCRIPT_URL;
+  document.getElementById("connDot").className = "dot" + (online?" ok":"");
+  document.getElementById("connText").textContent = online ? "Connected to Google Sheet" : "Local demo mode";
+
+  loadData();
+}
+
+function refreshCategories(){
+  const flow = document.querySelector('input[name="flow"]:checked').value;
+  document.getElementById("f-category").innerHTML = CATEGORIES[flow].map(c=>`<option>${c}</option>`).join("");
+}
+
+/* ---------- DATA LOAD ---------- */
+function showLoading(b){ document.getElementById("loading").style.display = b?"block":"none"; }
+
+async function loadData(){
+  if(!CONFIG.APPS_SCRIPT_URL){
+    DATA = JSON.parse(localStorage.getItem(DEMO_KEY) || "[]");
+    renderAll(); return;
+  }
+  showLoading(true);
+  try{
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL + "?action=list");
+    const json = await res.json();
+    DATA = (json.data||[]).map(normalize);
+    renderAll();
+  }catch(e){
+    alert("Could not reach the Google Sheet. Check the Apps Script URL.\n\n"+e);
+  }finally{ showLoading(false); }
+}
+function normalize(r){
+  return { id:r.id, date:r.date, member:r.member, flow:r.flow, category:r.category,
+           amount:Number(r.amount)||0, note:r.note||"" };
+}
+
+/* ---------- SUBMIT ---------- */
+async function onSubmit(e){
+  e.preventDefault();
+  const f = e.target;
+  const entry = {
+    id: Date.now().toString(),
+    date: f.date.value,
+    member: f.member.value,
+    flow: f.querySelector('input[name="flow"]:checked').value,
+    category: f.category.value,
+    amount: Number(f.amount.value),
+    note: f.note.value.trim()
+  };
+  const msg = document.getElementById("formMsg");
+  msg.className="msg"; msg.textContent="Saving…";
+
+  if(!CONFIG.APPS_SCRIPT_URL){
+    DATA.push(entry);
+    localStorage.setItem(DEMO_KEY, JSON.stringify(DATA));
+    afterSave(f,msg); return;
+  }
+  try{
+    showLoading(true);
+    await fetch(CONFIG.APPS_SCRIPT_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({action:"add", entry})
+    });
+    DATA.push(entry);
+    afterSave(f,msg);
+  }catch(err){
+    msg.className="msg err"; msg.textContent="Failed to save: "+err;
+  }finally{ showLoading(false); }
+}
+function afterSave(f,msg){
+  msg.className="msg ok"; msg.textContent="✓ Saved!";
+  f.amount.value=""; f.note.value="";
+  renderAll();
+  setTimeout(()=>{msg.textContent="";},2500);
+}
+
+/* ---------- RENDER ---------- */
+function renderAll(){ renderDash(); renderAssets(); renderRecords(); }
+
+function totals(){
+  let credit=0,expense=0,invest=0;
+  DATA.forEach(d=>{
+    if(d.flow==="Credit") credit+=d.amount;
+    else if(d.flow==="Expense") expense+=d.amount;
+    else if(d.flow==="Investment") invest+=d.amount;
+  });
+  return {credit,expense,invest,balance:credit-expense-invest};
+}
+
+function renderDash(){
+  const t = totals();
+  document.getElementById("s-credit").textContent  = fmt(t.credit);
+  document.getElementById("s-expense").textContent = fmt(t.expense);
+  document.getElementById("s-invest").textContent  = fmt(t.invest);
+  document.getElementById("s-balance").textContent = fmt(t.balance);
+
+  // member net position list
+  const ml = document.getElementById("memberList");
+  ml.innerHTML = CONFIG.MEMBERS.map((m,i)=>{
+    const c = DATA.filter(d=>d.member===m && d.flow==="Credit").reduce((a,b)=>a+b.amount,0);
+    const init = m[0];
+    return `<div class="member-chip"><div class="who">
+        <div class="av" style="background:${MEMBER_COLORS[i%MEMBER_COLORS.length]}">${init}</div>${m}
+      </div><div style="font-weight:800;color:var(--blue)">${fmt(c)}</div></div>`;
+  }).join("");
+
+  // monthly flow
+  const months={};
+  DATA.forEach(d=>{
+    const k=(d.date||"").slice(0,7); if(!k)return;
+    months[k]=months[k]||{c:0,d:0};
+    if(d.flow==="Credit") months[k].c+=d.amount; else months[k].d+=d.amount;
+  });
+  const keys=Object.keys(months).sort();
+  drawBar("chartFlow", keys.map(prettyMonth), [
+    {label:"Credit",data:keys.map(k=>months[k].c),color:"#34d399"},
+    {label:"Debit",data:keys.map(k=>months[k].d),color:"#fb7185"}
+  ]);
+
+  // contributions by member
+  const memC=CONFIG.MEMBERS.map(m=>DATA.filter(d=>d.member===m&&d.flow==="Credit").reduce((a,b)=>a+b.amount,0));
+  drawDoughnut("chartMembers", CONFIG.MEMBERS, memC, CONFIG.MEMBERS.map((_,i)=>MEMBER_COLORS[i%MEMBER_COLORS.length]));
+
+  // expense by category
+  const ex={};
+  DATA.filter(d=>d.flow==="Expense").forEach(d=>ex[d.category]=(ex[d.category]||0)+d.amount);
+  const exK=Object.keys(ex);
+  drawDoughnut("chartExpense", exK, exK.map(k=>ex[k]), exK.map((_,i)=>MEMBER_COLORS[i%MEMBER_COLORS.length].length?palette(i):palette(i)));
+}
+function palette(i){const p=["#7c5cff","#23a6d5","#fbbf24","#fb7185","#34d399","#a78bfa","#f97316","#22d3ee","#4ade80","#94a3b8","#e879f9","#fb923c"];return p[i%p.length];}
+function prettyMonth(k){const[y,m]=k.split("-");return new Date(y,m-1).toLocaleString("en",{month:"short"})+" "+y.slice(2);}
+
+function renderAssets(){
+  const assets={};
+  DATA.filter(d=>d.flow==="Investment").forEach(d=>assets[d.category]=(assets[d.category]||0)+d.amount);
+  const keys=Object.keys(assets);
+  const total=keys.reduce((a,k)=>a+assets[k],0);
+
+  document.getElementById("assetStats").innerHTML =
+    `<div class="stat gold"><div class="ic">🏦</div><div class="lbl">Total Family Assets</div><div class="val">${fmt(total)}</div></div>`+
+    `<div class="stat blue"><div class="ic">🔢</div><div class="lbl">Asset Types</div><div class="val">${keys.length}</div></div>`+
+    (keys.length?`<div class="stat green"><div class="ic">🥇</div><div class="lbl">Largest Holding</div><div class="val" style="font-size:20px">${keys.sort((a,b)=>assets[b]-assets[a])[0]}</div></div>`:"");
+
+  drawDoughnut("chartAssets", keys, keys.map(k=>assets[k]), keys.map(k=>ASSET_COLORS[k]||"#94a3b8"));
+
+  const at=document.getElementById("assetTable");
+  if(!keys.length){at.innerHTML='<div class="empty">No savings recorded yet. Add a “Saving” entry to start tracking MF, FD, Gold and more.</div>';return;}
+  at.innerHTML = keys.sort((a,b)=>assets[b]-assets[a]).map(k=>{
+    const pct = total? Math.round(assets[k]/total*100):0;
+    const col = ASSET_COLORS[k]||"#94a3b8";
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px">
+        <span style="font-weight:600">${k}</span><span style="font-weight:700">${fmt(assets[k])} · ${pct}%</span></div>
+      <div style="height:9px;border-radius:99px;background:rgba(255,255,255,.07)">
+        <div style="height:100%;width:${pct}%;border-radius:99px;background:${col}"></div></div></div>`;
+  }).join("");
+}
+
+function renderRecords(){
+  const fm=document.getElementById("filterMember").value;
+  const ff=document.getElementById("filterFlow").value;
+  const ft=document.getElementById("filterText").value.toLowerCase();
+  let rows=[...DATA].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||b.id.localeCompare(a.id));
+  if(fm)rows=rows.filter(r=>r.member===fm);
+  if(ff)rows=rows.filter(r=>r.flow===ff);
+  if(ft)rows=rows.filter(r=>(r.category+" "+r.note).toLowerCase().includes(ft));
+
+  const body=document.getElementById("recordsBody");
+  if(!rows.length){body.innerHTML=`<tr><td colspan="6"><div class="empty">No records yet.</div></td></tr>`;return;}
+  body.innerHTML=rows.map(r=>{
+    const tagClass=r.flow==="Credit"?"credit":r.flow==="Expense"?"expense":"invest";
+    const tagText=r.flow==="Investment"?"Saving":r.flow;
+    const amtClass=r.flow==="Credit"?"amt-c":"amt-d";
+    const sign=r.flow==="Credit"?"+":"−";
+    return `<tr>
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.member}</td>
+      <td><span class="tag ${tagClass}">${tagText}</span></td>
+      <td>${r.category}</td>
+      <td style="color:var(--muted)">${r.note||"—"}</td>
+      <td style="text-align:right" class="${amtClass}">${sign}${fmt(r.amount)}</td>
+    </tr>`;
+  }).join("");
+}
+function fmtDate(d){if(!d)return"—";const dt=new Date(d);return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});}
+
+/* ---------- CHART HELPERS ---------- */
+const baseOpts={responsive:true,plugins:{legend:{labels:{color:"#9aa0c7",font:{family:"Plus Jakarta Sans"},boxWidth:12,padding:12}}}};
+function destroy(id){if(charts[id])charts[id].destroy();}
+function drawDoughnut(id,labels,data,colors){
+  destroy(id);const el=document.getElementById(id);if(!el)return;
+  if(!data.some(v=>v>0)){labels=["No data"];data=[1];colors=["rgba(255,255,255,.08)"];}
+  charts[id]=new Chart(el,{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:colors,borderColor:"#171a35",borderWidth:3}]},
+    options:{...baseOpts,cutout:"62%",plugins:{...baseOpts.plugins,legend:{...baseOpts.plugins.legend,position:"bottom"}}}});
+}
+function drawBar(id,labels,sets){
+  destroy(id);const el=document.getElementById(id);if(!el)return;
+  charts[id]=new Chart(el,{type:"bar",
+    data:{labels:labels.length?labels:["—"],datasets:sets.map(s=>({label:s.label,data:s.data.length?s.data:[0],backgroundColor:s.color,borderRadius:6,maxBarThickness:34}))},
+    options:{...baseOpts,scales:{x:{ticks:{color:"#9aa0c7"},grid:{display:false}},y:{ticks:{color:"#9aa0c7"},grid:{color:"rgba(255,255,255,.06)"}}}}});
+}
+</script>
+</body>
+</html>
