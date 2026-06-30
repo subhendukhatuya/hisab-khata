@@ -48,7 +48,12 @@
   }
   .logo{font-size:34px;font-weight:800;letter-spacing:-.5px}
   .logo span{background:var(--accent);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .gate-card p{color:var(--muted);margin:8px 0 22px;font-size:14px}
+  .gate-card p{color:var(--muted);margin:8px 0 18px;font-size:14px}
+  .gate-family{display:flex;justify-content:center;margin:0 0 22px}
+  .gate-family .gp{width:50px;height:50px;border-radius:50%;overflow:hidden;border:3px solid var(--card-solid);
+    margin-left:-12px;background:#0e1130;display:grid;place-items:center;font-weight:800;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+  .gate-family .gp:first-child{margin-left:0}
+  .gate-family .gp img{width:100%;height:100%;object-fit:cover}
   .pin-input{
     width:100%;text-align:center;letter-spacing:10px;font-size:24px;font-weight:700;
     padding:14px;border-radius:14px;border:1px solid var(--stroke);background:#0e1130;color:var(--text);
@@ -169,7 +174,23 @@
   .toolbar select,.toolbar input{padding:10px 12px;border-radius:11px;border:1px solid var(--stroke);background:#0e1130;color:var(--text);font-family:inherit;font-size:14px}
   .member-chip{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:14px;background:var(--card);border:1px solid var(--stroke);margin-bottom:10px}
   .member-chip .who{display:flex;align-items:center;gap:11px;font-weight:700}
-  .av{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:800;color:#fff}
+  .av{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:800;color:#fff;overflow:hidden;flex:none}
+  .av img{width:100%;height:100%;object-fit:cover}
+  /* contributions-by-member legend with photos */
+  .member-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin-top:16px}
+  .ml-item{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+  .ml-pic{width:30px;height:30px;border-radius:50%;overflow:hidden;border:2px solid var(--stroke);background:#0e1130;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex:none}
+  .ml-pic img{width:100%;height:100%;object-fit:cover}
+  .ml-item small{display:block;color:var(--muted);font-weight:500;font-size:11.5px}
+  /* family photo strip */
+  .family-strip{display:flex;flex-wrap:wrap;gap:18px}
+  .fam{display:flex;flex-direction:column;align-items:center;gap:9px;width:92px;text-align:center}
+  .fam .pic{width:74px;height:74px;border-radius:50%;overflow:hidden;border:3px solid var(--violet);background:#0e1130;display:grid;place-items:center;font-weight:800;font-size:24px;color:#fff}
+  .fam .pic img{width:100%;height:100%;object-fit:cover}
+  .fam .nm{font-weight:700;font-size:13.5px}
+  /* avatar in records table */
+  .mini-av{width:28px;height:28px;border-radius:50%;overflow:hidden;display:inline-grid;place-items:center;vertical-align:middle;margin-right:8px;font-size:12px;font-weight:800;color:#fff}
+  .mini-av img{width:100%;height:100%;object-fit:cover}
   .empty{text-align:center;color:var(--muted);padding:40px 10px;font-size:14px}
   canvas{max-height:280px}
   .loading{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--card-solid);border:1px solid var(--stroke);
@@ -184,6 +205,7 @@
   <div class="gate-card">
     <div class="logo">Hisab<span>·</span>Khata</div>
     <p>Family Common Fund · enter your PIN</p>
+    <div id="gateFamily" class="gate-family"></div>
     <input id="pinInput" class="pin-input" type="password" inputmode="numeric" maxlength="8" placeholder="••••" />
     <div id="gateErr" class="gate-err"></div>
     <button class="btn" onclick="checkPin()">Unlock</button>
@@ -222,9 +244,14 @@
       <div class="stat violet"><div class="ic">💎</div><div class="lbl">Family Net Worth</div><div class="val" id="s-networth">₹0</div></div>
     </div>
 
+    <div class="panel" style="margin-bottom:16px">
+      <h3>👨‍👩‍👧‍👦 Our Family</h3>
+      <div id="familyStrip" class="family-strip"></div>
+    </div>
+
     <div class="grid two" style="margin-bottom:16px">
       <div class="panel"><h3>📅 Monthly Cash Flow</h3><canvas id="chartFlow"></canvas></div>
-      <div class="panel"><h3>👨‍👩‍👧‍👦 Contributions by Member</h3><canvas id="chartMembers"></canvas></div>
+      <div class="panel"><h3>👨‍👩‍👧‍👦 Contributions by Member</h3><canvas id="chartMembers"></canvas><div id="memberLegend" class="member-legend"></div></div>
     </div>
 
     <div class="grid two">
@@ -370,9 +397,20 @@ const CONFIG = {
   // Shared family PIN to open the site.
   PIN: "1913",
 
-  // The four earning members.
-  MEMBERS: ["Surjendu", "Madhumita", "Subhendu", "Mamata"]
+  // The earning members.
+  MEMBERS: ["Surjendu", "Madhumita", "Subhendu", "Mamata", "Chini"],
+
+  // Photo for each member (optimized jpgs in the photos/ folder next to this index.html).
+  PHOTOS: {
+    "Surjendu":  "photos/Surjendu.jpg",
+    "Madhumita": "photos/Madhumita.jpg",
+    "Subhendu":  "photos/Subhendu.jpg",
+    "Mamata":    "photos/Mamata.jpg",
+    "Chini":     "photos/Chini.jpg"
+  }
 };
+// Returns a member's photo URL, or "" if none set.
+const photoOf = m => (CONFIG.PHOTOS && CONFIG.PHOTOS[m]) ? CONFIG.PHOTOS[m] : "";
 
 const CATEGORIES = {
   Credit:     ["Salary deposit","Bonus","Rental income","Interest received","Refund","Gift received","Other income"],
@@ -403,6 +441,16 @@ function checkPin(){
   }
 }
 document.getElementById("pinInput").addEventListener("keydown",e=>{ if(e.key==="Enter") checkPin(); });
+
+// show the family photos on the PIN screen right away
+(function renderGateFamily(){
+  const el=document.getElementById("gateFamily"); if(!el) return;
+  el.innerHTML = CONFIG.MEMBERS.map((m,i)=>{
+    const url=photoOf(m), color=MEMBER_COLORS[i%MEMBER_COLORS.length];
+    const inner=url?`<img src="${url}" alt="${m}" onerror="this.style.display='none';this.parentNode.textContent='${m[0]}'">`:m[0];
+    return `<div class="gp" style="background:${color}" title="${m}">${inner}</div>`;
+  }).join("");
+})();
 
 /* ---------- INIT ---------- */
 function initApp(){
@@ -518,7 +566,28 @@ function afterSave(f,msg){
 }
 
 /* ---------- RENDER ---------- */
-function renderAll(){ renderDash(); renderAssets(); renderRecords(); }
+function renderAll(){ renderFamily(); renderDash(); renderAssets(); renderRecords(); }
+
+// circular avatar markup: photo if available, else coloured initial
+function avatarHTML(m, i, cls){
+  const url = photoOf(m);
+  const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
+  if(url) return `<span class="${cls}" style="background:${color}"><img src="${url}" alt="${m}" onerror="this.style.display='none';this.parentNode.textContent='${m[0]}'"></span>`;
+  return `<span class="${cls}" style="background:${color}">${m[0]}</span>`;
+}
+
+function renderFamily(){
+  const el = document.getElementById("familyStrip");
+  if(!el) return;
+  el.innerHTML = CONFIG.MEMBERS.map((m,i)=>{
+    const url = photoOf(m);
+    const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
+    const inner = url
+      ? `<img src="${url}" alt="${m}" onerror="this.style.display='none';this.parentNode.textContent='${m[0]}'">`
+      : m[0];
+    return `<div class="fam"><div class="pic" style="border-color:${color}">${inner}</div><div class="nm">${m}</div></div>`;
+  }).join("");
+}
 
 function totals(){
   let credit=0,expense=0,invest=0;
@@ -554,9 +623,15 @@ function renderDash(){
     {label:"Debit",data:keys.map(k=>months[k].d),color:"#fb7185"}
   ]);
 
-  // contributions by member
+  // contributions by member (chart legend hidden — replaced by a custom legend with photos)
   const memC=CONFIG.MEMBERS.map(m=>DATA.filter(d=>d.member===m&&d.flow==="Credit").reduce((a,b)=>a+b.amount,0));
-  drawDoughnut("chartMembers", CONFIG.MEMBERS, memC, CONFIG.MEMBERS.map((_,i)=>MEMBER_COLORS[i%MEMBER_COLORS.length]));
+  drawDoughnut("chartMembers", CONFIG.MEMBERS, memC, CONFIG.MEMBERS.map((_,i)=>MEMBER_COLORS[i%MEMBER_COLORS.length]), {hideLegend:true});
+  const leg=document.getElementById("memberLegend");
+  if(leg) leg.innerHTML = CONFIG.MEMBERS.map((m,i)=>{
+    const url=photoOf(m), color=MEMBER_COLORS[i%MEMBER_COLORS.length];
+    const inner=url?`<img src="${url}" alt="${m}" onerror="this.style.display='none';this.parentNode.textContent='${m[0]}'">`:m[0];
+    return `<div class="ml-item"><span class="ml-pic" style="border-color:${color};background:${color}">${inner}</span><span>${m}<small>${fmt(memC[i])}</small></span></div>`;
+  }).join("");
 
   // expense by category
   const ex={};
@@ -654,9 +729,10 @@ function renderRecords(){
     const tagText=r.flow==="Investment"?"Saving":r.flow;
     const amtClass=r.flow==="Credit"?"amt-c":"amt-d";
     const sign=r.flow==="Credit"?"+":"−";
+    const mi = Math.max(0, CONFIG.MEMBERS.indexOf(r.member));
     return `<tr>
       <td>${fmtDate(r.date)}</td>
-      <td>${r.member}</td>
+      <td style="white-space:nowrap">${avatarHTML(r.member, mi, "mini-av")}${r.member}</td>
       <td><span class="tag ${tagClass}">${tagText}</span></td>
       <td>${r.category}</td>
       <td style="color:var(--muted)">${r.note||"—"}</td>
@@ -735,11 +811,12 @@ function fmtDate(d){if(!d)return"—";const dt=new Date(d);return dt.toLocaleDat
 /* ---------- CHART HELPERS ---------- */
 const baseOpts={responsive:true,plugins:{legend:{labels:{color:"#9aa0c7",font:{family:"Plus Jakarta Sans"},boxWidth:12,padding:12}}}};
 function destroy(id){if(charts[id])charts[id].destroy();}
-function drawDoughnut(id,labels,data,colors){
+function drawDoughnut(id,labels,data,colors,opts){
+  opts=opts||{};
   destroy(id);const el=document.getElementById(id);if(!el)return;
   if(!data.some(v=>v>0)){labels=["No data"];data=[1];colors=["rgba(255,255,255,.08)"];}
   charts[id]=new Chart(el,{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:colors,borderColor:"#171a35",borderWidth:3}]},
-    options:{...baseOpts,cutout:"62%",plugins:{...baseOpts.plugins,legend:{...baseOpts.plugins.legend,position:"bottom"}}}});
+    options:{...baseOpts,cutout:"62%",plugins:{...baseOpts.plugins,legend:{...baseOpts.plugins.legend,position:"bottom",display:!opts.hideLegend}}}});
 }
 function drawBar(id,labels,sets){
   destroy(id);const el=document.getElementById(id);if(!el)return;
