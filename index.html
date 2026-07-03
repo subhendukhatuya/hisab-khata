@@ -130,6 +130,7 @@
   }
   nav.tabs button.active{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
   nav.tabs .tab-history{min-width:auto}
+  nav.tabs .tab-statement{min-width:auto}
 
   .view{display:none;animation:fade .35s ease}
   .view.active{display:block}
@@ -251,6 +252,24 @@
     font-size:14px;cursor:pointer
   }
   .dash-btn:hover{border-color:var(--violet);background:rgba(124,92,255,.10)}
+  .stmt-modal{width:min(640px,96vw)}
+  .stmt-note{font-size:13px;color:var(--muted);margin:-8px 0 14px;line-height:1.45}
+  .stmt-summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .stmt-pill{flex:1;min-width:100px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--stroke);font-size:12px;color:var(--muted);font-weight:600}
+  .stmt-pill strong{display:block;font-size:15px;color:var(--text);margin-top:3px;font-weight:800}
+  .stmt-wrap{overflow-x:auto;margin:0 -2px 12px;border:1px solid var(--stroke);border-radius:14px}
+  .stmt-table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+  .stmt-table th{text-align:left;padding:10px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.45px;color:var(--muted);border-bottom:1px solid var(--stroke);background:rgba(255,255,255,.03)}
+  .stmt-table th.num{text-align:right}
+  .stmt-table td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top}
+  .stmt-table tr:last-child td{border-bottom:none}
+  .stmt-table tr.stmt-open td{background:rgba(255,255,255,.02);font-style:italic;color:var(--muted)}
+  .stmt-table .num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .stmt-table .cr{color:var(--green)}
+  .stmt-table .dr{color:var(--red)}
+  .stmt-table .bal{color:var(--gold);font-weight:800}
+  .stmt-table .part{max-width:160px;line-height:1.4;font-weight:500}
+  .stmt-table .part small{display:block;color:var(--muted);font-size:11px;margin-top:2px;font-weight:500}
   .modal-chart-wrap{position:relative;height:240px;margin:8px 0 12px}
   .modal-chart-wrap canvas{max-height:240px}
   .dist-dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 0 2px rgba(255,255,255,.08)}
@@ -461,6 +480,7 @@
     .botnav button .bi{font-size:24px;line-height:1}
     .botnav button.active{color:var(--violet)}
     #navHistory.active{color:var(--violet)}
+    #navStatement.active{color:var(--violet)}
     .botnav .fab{flex:none;max-width:none;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;
       font-size:32px;line-height:1;margin-top:-24px;box-shadow:0 8px 22px rgba(124,92,255,.55);
       display:grid;place-items:center;font-weight:300}
@@ -545,6 +565,7 @@
     <button data-view="add">➕ Add Entry</button>
     <button data-view="assets">🏦 Savings & Assets</button>
     <button data-view="records">📒 All Records</button>
+    <button type="button" class="tab-statement" onclick="openStatement()">📋 Statement</button>
     <button type="button" class="tab-history" onclick="openHistory()">🕐 History</button>
   </nav>
 
@@ -743,6 +764,44 @@
     </div>
   </div>
 
+  <!-- ===== ACCOUNT STATEMENT MODAL ===== -->
+  <div id="statementModal" class="modal">
+    <div class="modal-card stmt-modal">
+      <h3>📋 Account Statement</h3>
+      <p class="stmt-note" id="stmtNote">Family fund passbook — every credit, debit & running balance.</p>
+      <div class="field" style="margin-bottom:10px">
+        <label for="stmtAccount">Account</label>
+        <select id="stmtAccount"></select>
+      </div>
+      <div class="dist-month-pick" style="margin-bottom:12px">
+        <div class="field">
+          <label for="stmtYear">Year</label>
+          <select id="stmtYear"><option value="">All years</option></select>
+        </div>
+        <div class="field">
+          <label for="stmtMonth">Month</label>
+          <select id="stmtMonth" disabled><option value="">All months</option></select>
+        </div>
+      </div>
+      <div id="stmtSummary" class="stmt-summary"></div>
+      <div class="stmt-wrap">
+        <table class="stmt-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Particulars</th>
+              <th class="num">Credit</th>
+              <th class="num">Debit</th>
+              <th class="num">Balance</th>
+            </tr>
+          </thead>
+          <tbody id="stmtBody"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn ghost" style="width:100%;margin-top:4px" onclick="closeStatement()">Close</button>
+    </div>
+  </div>
+
   <!-- ===== NET WORTH MODAL ===== -->
   <div id="networthModal" class="modal">
     <div class="modal-card">
@@ -843,6 +902,7 @@
   <button data-view="records"><span class="bi">📒</span><span>Records</span></button>
   <button class="fab" data-view="add" aria-label="Add entry">＋</button>
   <button data-view="assets"><span class="bi">🏦</span><span>Assets</span></button>
+  <button type="button" id="navStatement"><span class="bi">📋</span><span>Statement</span></button>
   <button type="button" id="navHistory"><span class="bi">🕐</span><span>History</span></button>
 </nav>
 </div>
@@ -990,8 +1050,10 @@ function renderHistory(){
 }
 function openHistory(){
   loadHistoryLocal();
+  closeStatement();
   document.getElementById("historyModal").classList.add("open");
   document.querySelectorAll("[data-view]").forEach(b=>b.classList.remove("active"));
+  document.getElementById("navStatement")?.classList.remove("active");
   document.getElementById("navHistory")?.classList.add("active");
   renderHistory();
   if(CONFIG.APPS_SCRIPT_URL){
@@ -1091,6 +1153,7 @@ function initApp(){
     b.onclick = ()=> showView(b.dataset.view);
   });
   document.getElementById("navHistory").onclick = openHistory;
+  document.getElementById("navStatement").onclick = openStatement;
 
   // quick-amount chips
   document.querySelectorAll("#amtChips button").forEach(b=>{
@@ -1139,6 +1202,13 @@ function initApp(){
   document.getElementById("distModal").addEventListener("click",e=>{ if(e.target.id==="distModal") closeDist(); });
   document.getElementById("insightsModal").addEventListener("click",e=>{ if(e.target.id==="insightsModal") closeInsights(); });
   document.getElementById("cashflowModal").addEventListener("click",e=>{ if(e.target.id==="cashflowModal") closeCashflow(); });
+  document.getElementById("statementModal").addEventListener("click",e=>{ if(e.target.id==="statementModal") closeStatement(); });
+  document.getElementById("stmtAccount").addEventListener("change", renderStatement);
+  document.getElementById("stmtYear").addEventListener("change",()=>{
+    populateStatementMonths(document.getElementById("stmtYear").value);
+    renderStatement();
+  });
+  document.getElementById("stmtMonth").addEventListener("change", renderStatement);
   document.getElementById("balanceModal").addEventListener("click",e=>{ if(e.target.id==="balanceModal") closeBalance(); });
   document.getElementById("investModal").addEventListener("click",e=>{ if(e.target.id==="investModal") closeInvest(); });
   document.getElementById("networthModal").addEventListener("click",e=>{ if(e.target.id==="networthModal") closeNetworth(); });
@@ -1176,7 +1246,9 @@ function showView(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   const sec=document.getElementById("view-"+view); if(sec) sec.classList.add("active");
   document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  document.getElementById("navStatement")?.classList.remove("active");
   document.getElementById("navHistory")?.classList.remove("active");
+  closeStatement();
   closeHistory();
   window.scrollTo({top:0,behavior:"smooth"});
   if(view==="add") setTimeout(()=>{const a=document.getElementById("f-amount"); if(a) a.focus();},250);
@@ -1433,6 +1505,148 @@ function openCashflow(){
   setTimeout(()=>{ if(charts.chartFlow) charts.chartFlow.resize(); }, 80);
 }
 function closeCashflow(){ document.getElementById("cashflowModal").classList.remove("open"); }
+
+function populateStatementAccounts(){
+  const sel=document.getElementById("stmtAccount"); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Family Fund (all)</option>'+
+    CREDIT_ACCOUNTS.map(a=>`<option value="${a}">${a}</option>`).join("");
+  sel.value=(cur&&CREDIT_ACCOUNTS.includes(cur))?cur:"";
+}
+function populateStatementYears(){
+  const sel=document.getElementById("stmtYear"); if(!sel) return;
+  const cur=sel.value;
+  const years=new Set();
+  DATA.forEach(d=>{ const dt=parseEntryDate(d.date); if(dt) years.add(String(dt.getFullYear())); });
+  sel.innerHTML='<option value="">All years</option>'+[...years].sort().reverse().map(y=>`<option value="${y}">${y}</option>`).join("");
+  if(cur&&years.has(cur)) sel.value=cur;
+}
+function populateStatementMonths(year){
+  const sel=document.getElementById("stmtMonth"); if(!sel) return;
+  const cur=sel.value;
+  if(!year){
+    sel.innerHTML='<option value="">All months</option>';
+    sel.disabled=true;
+    sel.value="";
+    return;
+  }
+  const months=new Set();
+  DATA.forEach(d=>{
+    const mk=monthKey(d.date);
+    if(mk&&mk.startsWith(year+"-")) months.add(mk.slice(5,7));
+  });
+  sel.innerHTML='<option value="">All months</option>'+[...months].sort().map(m=>{
+    const idx=parseInt(m,10)-1;
+    return `<option value="${m}">${MONTH_NAMES[idx]||m}</option>`;
+  }).join("");
+  sel.disabled=false;
+  sel.value=(cur&&months.has(cur))?cur:"";
+}
+function stmtEntryLines(r, acct){
+  if(acct){
+    if(r.flow!=="Credit"||(r.account||"Cash")!==acct) return null;
+    return { credit:r.amount, debit:0 };
+  }
+  if(r.flow==="Credit") return { credit:r.amount, debit:0 };
+  if(r.flow==="Expense"||r.flow==="Investment") return { credit:0, debit:r.amount };
+  return null;
+}
+function stmtParticulars(r){
+  const tag=r.flow==="Investment"?"Saving":r.flow;
+  const main=[tag,r.member,r.category].filter(Boolean).join(" · ");
+  const sub=[r.flow==="Credit"&&r.account?r.account:"", r.note].filter(Boolean).join(" · ");
+  return sub?`${main}<small>${sub}</small>`:main;
+}
+function computeStatement(acct, period){
+  const sorted=[...DATA].sort((a,b)=>(a.date||"").localeCompare(b.date||"")||a.id.localeCompare(b.id));
+  let opening=0;
+  const rows=[];
+  sorted.forEach(r=>{
+    const lines=stmtEntryLines(r, acct);
+    if(!lines) return;
+    const mk=monthKey(r.date);
+    if(period){
+      if(mk&&mk<period){ opening+=lines.credit-lines.debit; return; }
+      if(mk!==period) return;
+    }
+    rows.push({ entry:r, ...lines });
+  });
+  let balance=opening;
+  const withBal=rows.map(row=>{
+    balance+=row.credit-row.debit;
+    return { ...row, balance };
+  });
+  return { opening, rows:withBal, closing:balance };
+}
+function renderStatement(){
+  const acct=document.getElementById("stmtAccount")?.value||"";
+  const fy=document.getElementById("stmtYear")?.value||"";
+  const fmo=document.getElementById("stmtMonth")?.value||"";
+  const period=(fy&&fmo)?`${fy}-${fmo}`:"";
+  const noteEl=document.getElementById("stmtNote");
+  const bodyEl=document.getElementById("stmtBody");
+  const sumEl=document.getElementById("stmtSummary");
+  if(noteEl){
+    noteEl.textContent=acct
+      ? `Credits deposited to ${acct} only. Expenses & savings appear on Family Fund.`
+      : "Family fund passbook — every credit, debit & running balance.";
+  }
+  const { opening, rows, closing }=computeStatement(acct, period);
+  if(!rows.length&&!opening){
+    bodyEl.innerHTML='<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">No transactions for this selection.</td></tr>';
+    sumEl.innerHTML="";
+    return;
+  }
+  let html="";
+  if(period||opening){
+    html+=`<tr class="stmt-open">
+      <td>—</td>
+      <td class="part">Opening balance${period?" · "+prettyMonth(period):""}</td>
+      <td class="num">—</td>
+      <td class="num">—</td>
+      <td class="num bal">${fmt(opening)}</td>
+    </tr>`;
+  }
+  let totalCr=0, totalDr=0;
+  rows.forEach(row=>{
+    totalCr+=row.credit;
+    totalDr+=row.debit;
+    html+=`<tr>
+      <td>${fmtDate(row.entry.date)}</td>
+      <td class="part">${stmtParticulars(row.entry)}</td>
+      <td class="num cr">${row.credit?fmt(row.credit):"—"}</td>
+      <td class="num dr">${row.debit?fmt(row.debit):"—"}</td>
+      <td class="num bal">${fmt(row.balance)}</td>
+    </tr>`;
+  });
+  bodyEl.innerHTML=html;
+  sumEl.innerHTML=
+    `<div class="stmt-pill">Opening<strong>${fmt(opening)}</strong></div>`+
+    `<div class="stmt-pill">Credits<strong style="color:var(--green)">${fmt(totalCr)}</strong></div>`+
+    (acct?"":`<div class="stmt-pill">Debits<strong style="color:var(--red)">${fmt(totalDr)}</strong></div>`)+
+    `<div class="stmt-pill">Closing<strong style="color:var(--gold)">${fmt(closing)}</strong></div>`;
+}
+function openStatement(){
+  populateStatementAccounts();
+  populateStatementYears();
+  populateStatementMonths(document.getElementById("stmtYear")?.value||"");
+  renderStatement();
+  closeHistory();
+  document.getElementById("statementModal").classList.add("open");
+  document.querySelectorAll("[data-view]").forEach(b=>b.classList.remove("active"));
+  document.getElementById("navHistory")?.classList.remove("active");
+  document.getElementById("navStatement")?.classList.add("active");
+}
+function closeStatement(){
+  const modal=document.getElementById("statementModal");
+  if(!modal||!modal.classList.contains("open")) return;
+  modal.classList.remove("open");
+  document.getElementById("navStatement")?.classList.remove("active");
+  const activeView=document.querySelector(".view.active")?.id?.replace("view-","");
+  if(activeView){
+    document.querySelector(`[data-view="${activeView}"]`)?.classList.add("active");
+  }
+}
 
 function openBalance(){
   const t = totals();
