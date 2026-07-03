@@ -5,7 +5,8 @@
  * SETUP (one time):
  *  1. Create a Google Sheet. In row 1 of "Sheet1" put these headers
  *     (exactly, in this order):
- *        id | date | member | flow | category | amount | note
+ *        id | date | member | flow | category | amount | account | note
+ *     (A "History" tab is created automatically for activity logs.)
  *  2. In the Sheet menu: Extensions > Apps Script. Delete any code,
  *     paste THIS whole file, and Save.
  *  3. Click Deploy > New deployment > type "Web app".
@@ -19,27 +20,41 @@
  **********************************************************************/
 
 var SHEET_NAME = "Sheet1";
-var HEADERS = ["id", "date", "member", "flow", "category", "amount", "note"];
+var HISTORY_SHEET = "History";
+var HEADERS = ["id", "date", "member", "flow", "category", "amount", "account", "note"];
+var HISTORY_HEADERS = ["id", "ts", "action", "by", "entry", "prev"];
+
+var VERSION = "2.2-history-sync";
 
 function getSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
-  // ensure headers exist
   if (sh.getLastRow() === 0) {
     sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   }
   return sh;
 }
 
-/* ---- READ: GET ?action=list ---- */
-var VERSION = "2.0-edit-delete";   // bump when code changes; check via ?action=ping
+function getHistorySheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(HISTORY_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(HISTORY_SHEET);
+    sh.getRange(1, 1, 1, HISTORY_HEADERS.length).setValues([HISTORY_HEADERS]);
+  } else if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, HISTORY_HEADERS.length).setValues([HISTORY_HEADERS]);
+  }
+  return sh;
+}
 
+/* ---- READ: GET ?action=list | history | ping ---- */
 function doGet(e) {
   try {
-    // Diagnostic: open  <your-exec-url>?action=ping  in a browser.
-    // If you see version "2.0-edit-delete", the edit/delete code IS live.
     if (e && e.parameter && e.parameter.action === "ping") {
       return json_({ ok: true, version: VERSION });
+    }
+    if (e && e.parameter && e.parameter.action === "history") {
+      return json_({ ok: true, data: readHistory_() });
     }
     var sh = getSheet_();
     var values = sh.getDataRange().getValues();
@@ -47,6 +62,7 @@ function doGet(e) {
     for (var r = 1; r < values.length; r++) {
       var row = values[r];
       if (!row[0]) continue;
+      var hasAccountCol = row[7] !== undefined;
       out.push({
         id: String(row[0]),
         date: formatDate_(row[1]),
@@ -54,7 +70,8 @@ function doGet(e) {
         flow: row[3],
         category: row[4],
         amount: Number(row[5]) || 0,
-        note: row[6] || ""
+        account: hasAccountCol ? String(row[6] || "") : "",
+        note: hasAccountCol ? String(row[7] || "") : String(row[6] || "")
       });
     }
     return json_({ ok: true, data: out });
@@ -63,19 +80,46 @@ function doGet(e) {
   }
 }
 
-/* ---- WRITE: POST add / update / delete ---- */
+function readHistory_() {
+  var sh = getHistorySheet_();
+  if (sh.getLastRow() <= 1) return [];
+  var values = sh.getDataRange().getValues();
+  var out = [];
+  for (var r = 1; r < values.length; r++) {
+    var row = values[r];
+    if (!row[0]) continue;
+    out.push({
+      id: String(row[0]),
+      ts: String(row[1] || ""),
+      action: String(row[2] || ""),
+      by: String(row[3] || ""),
+      entry: parseJson_(row[4]),
+      prev: row[5] ? parseJson_(row[5]) : null
+    });
+  }
+  out.sort(function(a, b) { return String(b.ts).localeCompare(String(a.ts)); });
+  return out;
+}
+
+function parseJson_(val) {
+  try {
+    return JSON.parse(String(val || "{}"));
+  } catch (e) {
+    return {};
+  }
+}
+
+/* ---- WRITE: POST add / update / delete / logHistory ---- */
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
     var sh = getSheet_();
 
-    // ADD: {action:"add", entry:{...}}
     if (body.action === "add" && body.entry) {
       sh.appendRow(rowFromEntry_(body.entry));
       return json_({ ok: true });
     }
 
-    // UPDATE: {action:"update", entry:{id,...}}
     if (body.action === "update" && body.entry && body.entry.id) {
       var r = findRowById_(sh, body.entry.id);
       if (r === -1) return json_({ ok: false, error: "id not found" });
@@ -83,11 +127,24 @@ function doPost(e) {
       return json_({ ok: true });
     }
 
-    // DELETE: {action:"delete", id:"..."}
     if (body.action === "delete" && body.id) {
       var rd = findRowById_(sh, body.id);
       if (rd === -1) return json_({ ok: false, error: "id not found" });
       sh.deleteRow(rd);
+      return json_({ ok: true });
+    }
+
+    if (body.action === "logHistory" && body.item) {
+      var hi = body.item;
+      var hsh = getHistorySheet_();
+      hsh.appendRow([
+        hi.id || String(Date.now()),
+        hi.ts || new Date().toISOString(),
+        hi.action || "",
+        hi.by || "",
+        JSON.stringify(hi.entry || {}),
+        hi.prev ? JSON.stringify(hi.prev) : ""
+      ]);
       return json_({ ok: true });
     }
 
@@ -105,11 +162,11 @@ function rowFromEntry_(en) {
     en.flow || "",
     en.category || "",
     Number(en.amount) || 0,
+    en.account || "",
     en.note || ""
   ];
 }
 
-/* Returns the 1-based sheet row for a given id, or -1 if not found. */
 function findRowById_(sh, id) {
   var ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
   for (var i = 1; i < ids.length; i++) {
