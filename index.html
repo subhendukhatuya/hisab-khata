@@ -1255,7 +1255,7 @@ function showLoading(b){ document.getElementById("loading").style.display = b?"b
 
 async function loadData(){
   if(!CONFIG.APPS_SCRIPT_URL){
-    DATA = JSON.parse(localStorage.getItem(DEMO_KEY) || "[]");
+    DATA = JSON.parse(localStorage.getItem(DEMO_KEY) || "[]").map(normalize);
     loadHistoryLocal();
     renderAll(); return;
   }
@@ -1278,7 +1278,11 @@ async function loadData(){
   }finally{ showLoading(false); }
 }
 function normalize(r){
-  return { id:r.id, date:r.date, member:r.member, flow:r.flow, category:r.category,
+  const dt=parseEntryDate(r.date);
+  const date=dt
+    ? dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0")
+    : (r.date||"");
+  return { id:r.id, date, member:r.member, flow:r.flow, category:r.category,
            amount:Number(r.amount)||0, account:r.account||"", note:r.note||"" };
 }
 
@@ -1397,7 +1401,7 @@ function renderDash(){
 function drawCashflowChart(){
   const months={};
   DATA.forEach(d=>{
-    const k=(d.date||"").slice(0,7); if(!k)return;
+    const k=monthKey(d.date); if(!k)return;
     months[k]=months[k]||{c:0,d:0};
     if(d.flow==="Credit") months[k].c+=d.amount; else if(d.flow==="Expense") months[k].d+=d.amount;
   });
@@ -1497,9 +1501,9 @@ function openNetworth(){
 }
 function closeNetworth(){ document.getElementById("networthModal").classList.remove("open"); }
 
-function getExpenseByCategory(monthKey){
+function getExpenseByCategory(mk){
   let rows=DATA.filter(d=>d.flow==="Expense");
-  if(monthKey) rows=rows.filter(d=>(d.date||"").slice(0,7)===monthKey);
+  if(mk) rows=rows.filter(d=>monthKey(d.date)===mk);
   const ex={};
   rows.forEach(d=>ex[d.category]=(ex[d.category]||0)+d.amount);
   return ex;
@@ -1620,7 +1624,35 @@ function closeDist(){
 function openInsights(){ document.getElementById("insightsModal").classList.add("open"); }
 function closeInsights(){ document.getElementById("insightsModal").classList.remove("open"); }
 function palette(i){const p=["#7c5cff","#23a6d5","#fbbf24","#fb7185","#34d399","#a78bfa","#f97316","#22d3ee","#4ade80","#94a3b8","#e879f9","#fb923c"];return p[i%p.length];}
-function prettyMonth(k){const[y,m]=k.split("-");return new Date(y,m-1).toLocaleString("en",{month:"short"})+" "+y.slice(2);}
+
+function parseEntryDate(d){
+  if(!d) return null;
+  if(d instanceof Date) return isNaN(d.getTime()) ? null : d;
+  const s=String(d).trim();
+  const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(iso) return new Date(Number(iso[1]), Number(iso[2])-1, Number(iso[3]));
+  const dmy=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(dmy){
+    let yr=Number(dmy[3]); if(yr<100) yr+=2000;
+    return new Date(yr, Number(dmy[2])-1, Number(dmy[1]));
+  }
+  const dt=new Date(s);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+function monthKey(d){
+  const dt=parseEntryDate(d);
+  if(!dt) return "";
+  return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
+}
+function prettyMonth(k){
+  const parts=k.split("-");
+  const yr=Number(parts[0]), mo=Number(parts[1]);
+  if(yr&&mo>=1&&mo<=12)
+    return new Date(yr,mo-1).toLocaleString("en",{month:"short"})+" "+String(yr).slice(-2);
+  const dt=parseEntryDate(k);
+  if(dt) return dt.toLocaleString("en",{month:"short",year:"2-digit"});
+  return k;
+}
 
 /* ---------- FAMILY INSIGHTS (whole-family stats, no individual comparison) ---------- */
 function renderInsights(t){
@@ -1628,9 +1660,10 @@ function renderInsights(t){
   if(!DATA.length){ ml.innerHTML='<div class="empty">No data yet — add a few entries to see family insights.</div>'; return; }
 
   // this month
-  const thisKey = new Date().toISOString().slice(0,7);
+  const now=new Date();
+  const thisKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
   let mCredit=0, mExpense=0;
-  DATA.forEach(d=>{ if((d.date||"").slice(0,7)===thisKey){
+  DATA.forEach(d=>{ if(monthKey(d.date)===thisKey){
     if(d.flow==="Credit") mCredit+=d.amount; else if(d.flow==="Expense") mExpense+=d.amount; } });
 
   // top expense category
@@ -1641,7 +1674,7 @@ function renderInsights(t){
   const savingsRate = t.credit ? Math.round(t.invest / t.credit * 100) : 0;
 
   const expMonths = new Set(
-    DATA.filter(d => d.flow === "Expense" && d.date).map(d => d.date.slice(0, 7))
+    DATA.filter(d => d.flow === "Expense" && d.date).map(d => monthKey(d.date))
   );
   const nExpMonths = Math.max(expMonths.size, 1);
   const avgMonthExp = Math.round(t.expense / nExpMonths);
@@ -1703,7 +1736,7 @@ function renderRecords(){
 
   let html="", lastMonth="";
   rows.forEach(r=>{
-    const mk=(r.date||"").slice(0,7);
+    const mk=monthKey(r.date);
     if(mk&&mk!==lastMonth){
       html+=`<div class="rec-month">${prettyMonth(mk)}</div>`;
       lastMonth=mk;
@@ -1809,7 +1842,12 @@ async function deleteEntry(){
   closeEdit(); renderAll();
   if(CONFIG.APPS_SCRIPT_URL) loadData();   // reconcile with the Sheet so deletes that didn't persist reappear immediately
 }
-function fmtDate(d){if(!d)return"—";const dt=new Date(d);return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});}
+function fmtDate(d){
+  if(!d) return "—";
+  const dt=parseEntryDate(d);
+  if(!dt) return String(d);
+  return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});
+}
 
 /* ---------- CHART HELPERS ---------- */
 const baseOpts={responsive:true,plugins:{legend:{labels:{color:"#9aa0c7",font:{family:"Plus Jakarta Sans"},boxWidth:12,padding:12}}}};

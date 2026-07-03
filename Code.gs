@@ -176,10 +176,26 @@ function findRowById_(sh, id) {
 }
 
 function formatDate_(d) {
-  if (d instanceof Date) {
+  if (d instanceof Date && !isNaN(d.getTime())) {
     return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
-  return String(d || "");
+  if (typeof d === "number" && d > 1000) {
+    var serial = new Date(Math.round((d - 25569) * 86400 * 1000));
+    if (!isNaN(serial.getTime())) {
+      return Utilities.formatDate(serial, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    }
+  }
+  var s = String(d || "").trim();
+  if (!s) return "";
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[1] + "-" + iso[2] + "-" + iso[3];
+  var dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (dmy) {
+    var yr = Number(dmy[3]);
+    if (yr < 100) yr += 2000;
+    return yr + "-" + ("0" + dmy[2]).slice(-2) + "-" + ("0" + dmy[1]).slice(-2);
+  }
+  return s;
 }
 
 function json_(obj) {
