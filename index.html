@@ -283,6 +283,7 @@
   }
   .records-search:focus{outline:none;border-color:var(--violet)}
   .filter-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .records-period-pick{margin-top:10px}
   .filter-row select{
     padding:9px 12px;border-radius:999px;border:1px solid var(--stroke);
     background:#0e1130;color:var(--text);font-family:inherit;font-size:13px;font-weight:600
@@ -680,6 +681,16 @@
             <button type="button" data-flow="Investment">Saving</button>
           </div>
           <select id="filterMember"><option value="">All members</option></select>
+        </div>
+        <div class="records-period-pick dist-month-pick">
+          <div class="field">
+            <label for="filterYear">Year</label>
+            <select id="filterYear"><option value="">All years</option></select>
+          </div>
+          <div class="field">
+            <label for="filterMonth">Month</label>
+            <select id="filterMonth" disabled><option value="">All months</option></select>
+          </div>
         </div>
       </div>
       <div id="recordsList" class="records-list"></div>
@@ -1112,6 +1123,11 @@ function initApp(){
       renderRecords();
     };
   });
+  document.getElementById("filterYear")?.addEventListener("change",()=>{
+    populateRecordsMonths(document.getElementById("filterYear").value);
+    renderRecords();
+  });
+  document.getElementById("filterMonth")?.addEventListener("change", renderRecords);
 
   // edit modal wiring
   document.getElementById("editForm").addEventListener("submit", saveEdit);
@@ -1335,7 +1351,7 @@ function afterSave(f,msg){
 }
 
 /* ---------- RENDER ---------- */
-function renderAll(){ renderFamily(); renderDash(); renderAssets(); renderRecords(); }
+function renderAll(){ renderFamily(); renderDash(); renderAssets(); populateRecordsYears(); renderRecords(); }
 
 // circular avatar markup: photo if available, else coloured initial
 function avatarHTML(m, i, cls){
@@ -1509,6 +1525,38 @@ function getExpenseByCategory(mk){
   return ex;
 }
 const MONTH_NAMES=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function populateRecordsYears(){
+  const sel=document.getElementById("filterYear"); if(!sel) return;
+  const cur=sel.value;
+  const years=new Set();
+  DATA.forEach(d=>{
+    const dt=parseEntryDate(d.date);
+    if(dt) years.add(String(dt.getFullYear()));
+  });
+  sel.innerHTML='<option value="">All years</option>'+[...years].sort().reverse().map(y=>`<option value="${y}">${y}</option>`).join("");
+  if(cur&&years.has(cur)) sel.value=cur;
+}
+function populateRecordsMonths(year){
+  const sel=document.getElementById("filterMonth"); if(!sel) return;
+  const cur=sel.value;
+  if(!year){
+    sel.innerHTML='<option value="">All months</option>';
+    sel.disabled=true;
+    sel.value="";
+    return;
+  }
+  const months=new Set();
+  DATA.forEach(d=>{
+    const mk=monthKey(d.date);
+    if(mk&&mk.startsWith(year+"-")) months.add(mk.slice(5,7));
+  });
+  sel.innerHTML='<option value="">All months</option>'+[...months].sort().map(m=>{
+    const idx=parseInt(m,10)-1;
+    return `<option value="${m}">${MONTH_NAMES[idx]||m}</option>`;
+  }).join("");
+  sel.disabled=false;
+  sel.value=(cur&&months.has(cur))?cur:"";
+}
 function populateDistYears(){
   const sel=document.getElementById("distYear"); if(!sel) return;
   const years=new Set();
@@ -1723,16 +1771,27 @@ function renderRecords(){
   const fm=document.getElementById("filterMember").value;
   const ff=document.querySelector("#flowChips button.active")?.dataset.flow||"";
   const ft=document.getElementById("filterText").value.toLowerCase();
+  const fy=document.getElementById("filterYear")?.value||"";
+  const fmo=document.getElementById("filterMonth")?.value||"";
   let rows=[...DATA].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||b.id.localeCompare(a.id));
   if(fm)rows=rows.filter(r=>r.member===fm);
   if(ff)rows=rows.filter(r=>r.flow===ff);
   if(ft)rows=rows.filter(r=>(r.category+" "+r.note+" "+(r.account||"")).toLowerCase().includes(ft));
+  if(fy&&fmo) rows=rows.filter(r=>monthKey(r.date)===`${fy}-${fmo}`);
 
   const countEl=document.getElementById("recordsCount");
-  if(countEl) countEl.textContent=rows.length+" entr"+(rows.length===1?"y":"ies")+(DATA.length!==rows.length?" (filtered)":"");
+  if(countEl){
+    let label=rows.length+" entr"+(rows.length===1?"y":"ies");
+    if(rows.length!==DATA.length) label+=" (filtered)";
+    if(fy&&fmo) label+=" · "+prettyMonth(`${fy}-${fmo}`);
+    countEl.textContent=label;
+  }
 
   const list=document.getElementById("recordsList");
-  if(!rows.length){list.innerHTML=`<div class="empty">No records match your filters.</div>`;return;}
+  if(!rows.length){
+    const hint=(fy&&fmo)?`No records for ${prettyMonth(`${fy}-${fmo}`)}.`:"No records match your filters.";
+    list.innerHTML=`<div class="empty">${hint}</div>`;return;
+  }
 
   let html="", lastMonth="";
   rows.forEach(r=>{
