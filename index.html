@@ -640,6 +640,38 @@
   }
   .btn-save:active{transform:scale(.98)}
 
+  /* ---------- CONSTRUCTION (embedded Mohanpur tracker) ---------- */
+  #view-construction{margin:0 -18px -20px}
+  .construction-shell{
+    display:flex;flex-direction:column;
+    height:calc(100vh - 150px);min-height:520px;
+    border:1px solid var(--stroke);border-radius:20px;overflow:hidden;
+    background:#1c1917;
+  }
+  .construction-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    padding:10px 14px;background:rgba(234,88,12,.12);border-bottom:1px solid rgba(234,88,12,.25);
+  }
+  .construction-bar strong{font-size:14px;font-weight:800}
+  .construction-bar span{color:var(--muted);font-size:12px;font-weight:600}
+  .construction-bar a,.construction-bar button{
+    font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+    padding:7px 12px;border-radius:999px;border:1px solid rgba(234,88,12,.35);
+    background:rgba(234,88,12,.15);color:#fdba74;text-decoration:none;
+  }
+  .construction-bar a:hover,.construction-bar button:hover{background:rgba(234,88,12,.28)}
+  #constructionFrame{
+    flex:1;width:100%;border:0;background:#1c1917;min-height:0;
+  }
+  body.construction-open .wrap{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  @media(max-width:820px){
+    #view-construction{margin:0 -18px}
+    .construction-shell{
+      height:calc(100vh - 120px - env(safe-area-inset-bottom));
+      min-height:420px;border-radius:16px;
+    }
+  }
+
   /* ---------- BOTTOM NAV (mobile only) — fixed to viewport, always visible ---------- */
   .botnav{display:none}
   @media(max-width:820px){
@@ -649,13 +681,14 @@
       display:flex;position:fixed;left:0;right:0;bottom:0;z-index:200;
       background:rgba(15,18,38,.98);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
       border-top:1px solid var(--stroke);
-      padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+      padding:8px 4px calc(8px + env(safe-area-inset-bottom));
       justify-content:space-around;align-items:flex-end;
-      box-shadow:0 -8px 32px rgba(0,0,0,.45)
+      box-shadow:0 -8px 32px rgba(0,0,0,.45);
+      overflow-x:auto;-webkit-overflow-scrolling:touch;gap:2px
     }
-    .botnav button{flex:1;max-width:80px;background:none;border:none;color:var(--muted);font-family:inherit;cursor:pointer;
-      display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:6px 4px}
-    .botnav button .bi{font-size:24px;line-height:1}
+    .botnav button{flex:1;min-width:48px;max-width:72px;background:none;border:none;color:var(--muted);font-family:inherit;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:6px 2px}
+    .botnav button .bi{font-size:22px;line-height:1}
     .botnav button.active{color:var(--violet)}
     #navHistory.active{color:var(--violet)}
     #navStatement.active{color:var(--violet)}
@@ -773,6 +806,7 @@
     <button data-view="add">➕ Add Entry</button>
     <button data-view="assets">🏦 Savings & Assets</button>
     <button data-view="records">📒 All Records</button>
+    <button data-view="construction">🏗️ Construction</button>
     <button type="button" class="tab-statement" onclick="openStatement()">📋 Statement</button>
     <button type="button" class="tab-history" onclick="openHistory()">🕐 History</button>
   </nav>
@@ -790,6 +824,24 @@
     <div class="dash-actions">
       <button type="button" class="dash-btn" onclick="openInsights()">✨ Family Insights</button>
       <button type="button" class="dash-btn" onclick="openCashflow()">📅 Monthly Cash Flow</button>
+      <button type="button" class="dash-btn" onclick="showView('construction')">🏗️ Mohanpur Construction</button>
+    </div>
+  </section>
+
+  <!-- ===== CONSTRUCTION (Mohanpur) ===== -->
+  <section class="view" id="view-construction">
+    <div class="construction-shell">
+      <div class="construction-bar">
+        <div>
+          <strong>🏗️ Mohanpur Construction</strong>
+          <span> · home build expenses (separate ledger)</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" onclick="reloadConstruction()">↻ Reload</button>
+          <a href="mohanpur-construction/" target="_blank" rel="noopener">Open full page ↗</a>
+        </div>
+      </div>
+      <iframe id="constructionFrame" title="Mohanpur Construction" allow="fullscreen"></iframe>
     </div>
   </section>
 
@@ -1128,9 +1180,10 @@
   <button data-view="dash"><span class="bi">🏠</span><span>Home</span></button>
   <button data-view="records"><span class="bi">📒</span><span>Records</span></button>
   <button class="fab" data-view="add" aria-label="Add entry">＋</button>
+  <button data-view="construction"><span class="bi">🏗️</span><span>Build</span></button>
   <button data-view="assets"><span class="bi">🏦</span><span>Assets</span></button>
-  <button type="button" id="navStatement"><span class="bi">📋</span><span>Statement</span></button>
-  <button type="button" id="navHistory"><span class="bi">🕐</span><span>History</span></button>
+  <button type="button" id="navStatement"><span class="bi">📋</span><span>Stmt</span></button>
+  <button type="button" id="navHistory"><span class="bi">🕐</span><span>Hist</span></button>
 </nav>
 </div>
 
@@ -1390,8 +1443,8 @@ function initApp(){
   document.querySelectorAll("[data-view]").forEach(b=>{
     b.onclick = ()=> showView(b.dataset.view);
   });
-  document.getElementById("navHistory").onclick = openHistory;
-  document.getElementById("navStatement").onclick = openStatement;
+  document.getElementById("navHistory")?.addEventListener("click", openHistory);
+  document.getElementById("navStatement")?.addEventListener("click", openStatement);
 
   // quick-amount chips
   document.querySelectorAll("#amtChips button").forEach(b=>{
@@ -1504,16 +1557,26 @@ function initApp(){
   loadData();
 }
 
+const CONSTRUCTION_SRC = "mohanpur-construction/index.html?embed=1";
+function ensureConstructionFrame(forceReload){
+  const frame=document.getElementById("constructionFrame");
+  if(!frame) return;
+  if(forceReload || !frame.getAttribute("src")) frame.src=CONSTRUCTION_SRC;
+}
+function reloadConstruction(){ ensureConstructionFrame(true); }
+
 function showView(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   const sec=document.getElementById("view-"+view); if(sec) sec.classList.add("active");
   document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
   document.getElementById("navStatement")?.classList.remove("active");
   document.getElementById("navHistory")?.classList.remove("active");
+  document.body.classList.toggle("construction-open", view==="construction");
   closeStatement();
   closeHistory();
   window.scrollTo({top:0,behavior:"smooth"});
   if(view==="add") setTimeout(()=>{const a=document.getElementById("f-amount"); if(a) a.focus();},250);
+  if(view==="construction") ensureConstructionFrame(false);
 }
 
 function refreshMemberSelect(id, flow, keepVal){
